@@ -1,0 +1,10 @@
+{
+  "PartitionIdx": 1,
+  "TotalPartition" : 10,
+  "SegmentSize": 200000,
+  "DSN": "root:baidu@123@tcp(localhost:3306)/id_alloc_db",
+
+  "HttpPort": 8880,
+  "HttpReadTimeout": 5000,
+  "HttpWriteTimeout": 5000
+}
