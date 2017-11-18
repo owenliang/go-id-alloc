@@ -33,6 +33,9 @@ func main() {
 	if err = core.InitMysql(); err != nil {
 		goto ERROR;
 	}
+	if err = core.InitAlloc(); err != nil {
+		goto ERROR;
+	}
 	if err = core.StartServer(); err != nil {
 		goto ERROR;
 	}

@@ -16,7 +16,7 @@ type Conf struct {
 	HttpWriteTimeout int
 }
 
-var GConf *Conf = nil
+var GConf *Conf
 
 func LoadConf(filename string) error {
 	content, err := ioutil.ReadFile(filename)

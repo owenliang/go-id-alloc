@@ -6,13 +6,29 @@ import (
 	"net/http"
 	"strconv"
 	"fmt"
+	"encoding/json"
 )
 
+type allocResponse struct {
+	Errno int
+	Msg string
+	Id int64
+}
+
 func handleAlloc(w http.ResponseWriter, r *http.Request) {
-	nextId, err := GMysql.NextId()
-	if err == nil{
-		strNextId := fmt.Sprintf("%d", nextId)
-		w.Write([]byte(strNextId))
+	resp := allocResponse{}
+
+	if nextId, err := GAlloc.NextId(); err != nil {
+		resp.Errno = -1
+		resp.Msg = fmt.Sprintf("%v", err)
+	} else {
+		resp.Id = nextId
+	}
+
+	if bytes, err := json.Marshal(&resp); err == nil {
+		w.Write(bytes)
+	} else {
+		w.WriteHeader(500)
 	}
 }
 
