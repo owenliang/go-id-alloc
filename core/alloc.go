@@ -74,7 +74,7 @@ func (alloc *Alloc)NextId() (int64, error) {
 		id := alloc.segments[0].left + alloc.segments[0].offset
 		alloc.segments[0].offset++
 		if id + 1 >= alloc.segments[0].right {
-			alloc.segments = append(alloc.segments, alloc.segments[1:]...)
+			alloc.segments = append(alloc.segments[:0], alloc.segments[1:]...)
 		}
 		return id, nil
 	} else {
