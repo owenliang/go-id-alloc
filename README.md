@@ -94,7 +94,7 @@ ALTER TABLE `partition_2` auto_increment=2;
   "PartitionIdx": 2,
   "TotalPartition" : 2,
   "SegmentSize": 200000,
-  "DSN": "user:password@123@tcp(Mysql2:3306)/id_alloc_db",
+  "DSN": "user:password@tcp(Mysql2:3306)/id_alloc_db",
 
   "HttpPort": 8880,
   "HttpReadTimeout": 5000,
