@@ -1,34 +1,55 @@
 # go-id-alloc
-Golang+Mysql实现的分布式ID发号器
+Golang+Mysql实现的分布式ID生成服务
 
-# 特点
-* 全局ID唯一，整体趋势递增，永不重复
-* 纯内存操作，超高单机性能，Mysql零压力
-* 支持集群部署，高可用，无限横向扩展
-* Mysql持久化，Master-Slave主备，故障节点人工摘除，可以快速恢复
-* 自定义ID起始大小，方便接入现有业务
-* HTTP协议接口，使用简单
+# 特性
+* 高性能：分配ID只访问内存
+* 分布式：横向扩展，理论无上限
+* 高可靠：Mysql持久化，故障恢复快
+* 唯一性：生成64位整形，整体递增，永不重复
+* 易用性：可自定义ID起始位置，对外HTTP服务
+* 可运维性：提供健康检查接口，通过负载均衡自动摘除故障节点
 
-# 准备环境
-* 进入$GOPATH（包含src目录），下载源码
+# 编译项目
+* 进入$GOPATH目录（至少包含src子目录），下载源码
+
 ```
 go get -u github.com/owenliang/go-id-alloc
 ```
+
 * 安装mysql依赖
+
 ```
 go get -u github.com/go-sql-driver/mysql
 ```
+
 * 进入目录
+
 ```
 $GOPATH/src/github.com/owenliang/go-id-alloc/main
 ```
-打开alloc.json准备进行配置
 
-# 配置示例
-假设集群由2台go-id-alloc负载均衡（例如使用haproxy）保障高可用，并且计划对外提供最大40w/s的ID分配QPS。
-* 申请2个独立的Mysql实例（出于成本考虑，可以复用已有的Mysql，不会对其造成任何压力）
-* 在2个实例上分别建立一个专用数据库，名称任意，不强制相同
-* 在Mysql1中执行如下语句：
+* 编译项目
+
+```
+go build
+```
+
+# 集群配置
+
+go-id-alloc依赖Mysql持久化ID，若Mysql故障则go-id-alloc无法继续服务。
+
+为了保障集群高可用，应该为每个go-id-alloc分别创建不同的Mysql实例（服务器），从而保障个别节点故障，其他节点仍可以对外服务。
+
+但go-id-alloc并不强制与Mysql实例1:1配置，完全可以部分go-id-alloc共用同一个Mysql实例，只不过此时若Mysql故障的话，所有使用它的go-id-alloc均会不可用。
+
+假设集群由2台go-id-alloc组成，前台使用负载均衡（例如：haproxy）反向代理。
+
+按业务需求分析，计划对外提供最大QPS = 40w/s的ID分配能力，那么进行如下配置即可：
+
+* 申请2个独立的Mysql实例（可以复用已有Mysql实例）
+* 在2个实例上分别建立一个专用数据库id_alloc_db
+* 在Mysql1中建立如下table：
+
 ```
 CREATE TABLE `partition_1` (
  `id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -38,7 +59,9 @@ CREATE TABLE `partition_1` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ALTER TABLE `partition_1` auto_increment=1;
 ```
-* 在Mysql2中执行如下语句：
+
+* 在Mysql2中建立如下table：
+
 ```
 CREATE TABLE `partition_2` (
  `id` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -48,7 +71,9 @@ CREATE TABLE `partition_2` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ALTER TABLE `partition_2` auto_increment=2;
 ```
+
 * 修改go-id-alloc进程1的配置如下：
+
 ```
 {
   "PartitionIdx": 1,
@@ -61,7 +86,9 @@ ALTER TABLE `partition_2` auto_increment=2;
   "HttpWriteTimeout": 5000
 }
 ```
+
 * 修改go-id-alloc进程2的配置如下：
+
 ```
 {
   "PartitionIdx": 2,
@@ -74,7 +101,9 @@ ALTER TABLE `partition_2` auto_increment=2;
   "HttpWriteTimeout": 5000
 }
 ```
+
 * 分别启动2个go-id-alloc服务：
+
 ```
 go run main.go -config ./alloc.json
 ```
@@ -91,18 +120,38 @@ Id: 130000001
 }
 ```
 
+# 健康检查接口
+一般推荐使用haproxy，它可以访问特定接口进行健康检查。
+
+其他负载均衡无需特别配置，/alloc接口在故障时同样会返回500错误码。
+
+若Mysql存在故障，健康接口将返回的HTTP Code = 500
+
+```
+request: http://localhost:8080/health
+
+response:
+{
+Left: 399994
+}
+
+```
+
 # Mysql故障修复
 
-* 定期调用alloc接口，若连续失败则应当首先关闭进程，人工介入。
-* 若Mysql Master无法恢复，则等待Slave同步完成后，记录partition表中id字段的值为N。
-* 将Slave提升为主库，并执行SQL清空表：
+* 通常Mysql故障后，对应的go-id-alloc服务应当会被负载均衡自动摘除。
+* 通过Slave查看对应partition表的id大小，记录为N。
+* 在新Master上清空partition表：
+
 ```
 truncate partition_xxx;
 ```
-* 预估故障时主从延迟，找到X，能够令M = (N + TotalPartition * X) * SegmentSize大于id-alloc-size可能最后分配的1个ID。
-* 执行SQL初始化新的起始偏移量：
+
+* 因为Master-Slave可能存在主从延迟，所以数字N可能偏小，为了保险起见应该选择一个数字M = N + TotalParition * X，建议X >= 10以跳过可能已经在Master上分配出去的号段：
+
 ```
-ALTER TABLE `partition_xxx` auto_increment=(N+TotalParition*X);
+ALTER TABLE `partition_xxx` auto_increment=M;
 ```
+
 * 重新启动go-id-alloc，恢复服务。
 

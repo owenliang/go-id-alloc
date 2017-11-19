@@ -30,6 +30,7 @@ func handleAlloc(w http.ResponseWriter, r *http.Request) {
 		if resp.Id, err = GAlloc.NextId(); err != nil {
 			resp.Errno = -1
 			resp.Msg = fmt.Sprintf("%v", err)
+			w.WriteHeader(500)
 			break
 		}
 		if resp.Id != 0 {
