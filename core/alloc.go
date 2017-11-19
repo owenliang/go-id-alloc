@@ -82,5 +82,15 @@ func (alloc *Alloc)NextId() (int64, error) {
 	}
 }
 
+func (alloc *Alloc)LeftCount() (int64) {
+	alloc.mutex.Lock()
+	defer alloc.mutex.Unlock()
 
+	var count int64 = 0
+
+	for i := 0; i < len(alloc.segments); i++ {
+		count += alloc.segments[i].right - alloc.segments[i].left - alloc.segments[i].offset
+	}
+	return count
+}
 
