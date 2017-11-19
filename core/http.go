@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"fmt"
 	"encoding/json"
 )
 
@@ -16,16 +15,23 @@ type allocResponse struct {
 }
 
 func handleAlloc(w http.ResponseWriter, r *http.Request) {
-	resp := allocResponse{}
+	var (
+		resp allocResponse = allocResponse{}
+		err error
+		bytes []byte
+	)
 
-	if nextId, err := GAlloc.NextId(); err != nil {
-		resp.Errno = -1
-		resp.Msg = fmt.Sprintf("%v", err)
-	} else {
-		resp.Id = nextId
+	for { // skip Id=0
+		if resp.Id, err = GAlloc.NextId(); err != nil {
+			w.WriteHeader(500)
+			return
+		}
+		if resp.Id != 0 {
+			break
+		}
 	}
 
-	if bytes, err := json.Marshal(&resp); err == nil {
+	if bytes, err = json.Marshal(&resp); err == nil {
 		w.Write(bytes)
 	} else {
 		w.WriteHeader(500)
