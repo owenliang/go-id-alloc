@@ -36,7 +36,7 @@ CREATE TABLE `partition_1` (
  PRIMARY KEY (`id`),
  UNIQUE KEY `meanless` (`meanless`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-ALTER TABLE `partition_1` SET auto_increment_increment=1;
+ALTER TABLE `partition_1` auto_increment=1;
 ```
 * 在Mysql2中执行如下语句：
 ```
@@ -46,7 +46,7 @@ CREATE TABLE `partition_2` (
  PRIMARY KEY (`id`),
  UNIQUE KEY `meanless` (`meanless`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-ALTER TABLE `partition_2` SET auto_increment_increment=2;
+ALTER TABLE `partition_2` auto_increment=2;
 ```
 * 修改go-id-alloc进程1的配置如下：
 ```
@@ -81,5 +81,28 @@ go run main.go -config ./alloc.json
 
 # 请求示例
 ```
-http://localhost:8880/alloc
+request: http://localhost:8880/alloc
+
+response:
+{
+Errno: 0,
+Msg: "",
+Id: 130000001
+}
 ```
+
+# Mysql故障修复
+
+* 定期调用alloc接口，若连续失败则应当首先关闭进程，人工介入。
+* 若Mysql Master无法恢复，则等待Slave同步完成后，记录partition表中id字段的值为N。
+* 将Slave提升为主库，并执行SQL清空表：
+```
+truncate partition_xxx;
+```
+* 预估故障时主从延迟，找到X，能够令M = (N + TotalPartition * X) * SegmentSize大于id-alloc-size可能最后分配的1个ID。
+* 执行SQL初始化新的起始偏移量：
+```
+ALTER TABLE `partition_xxx` auto_increment=(N+TotalParition*X);
+```
+* 重新启动go-id-alloc，恢复服务。
+
