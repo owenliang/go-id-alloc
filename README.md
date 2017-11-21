@@ -1,5 +1,5 @@
 # go-id-alloc
-Golang+Mysql实现的分布式ID生成服务
+Golang+Mysql实现的分布式ID生成服务（[点击查看原理](https://yuerblog.cc/2017/11/21/golang-id-alloc/)）
 
 # 特性
 * 高性能：分配ID只访问内存
