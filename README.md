@@ -37,16 +37,20 @@ go build
 # 初始化数据库
 
 ```
-	CREATE TABLE `segments` (
-	 `biz_tag` varchar(32) NOT NULL,
-	 `max_id` bigint NOT NULL,
-	 `step` bigint NOT NULL,
-	 `desc` varchar(1024) DEFAULT '' NOT NULL,
-	 `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-	 PRIMARY KEY (`biz_tag`)
-	) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+create database id_alloc_db;
 
-	INSERT INTO segments(`biz_tag`, `max_id`, `step`, `desc`) VALUES('test', 0, 100000, "test业务ID池");
+use id_alloc_db;
+
+CREATE TABLE `segments` (
+ `biz_tag` varchar(32) NOT NULL,
+ `max_id` bigint NOT NULL,
+ `step` bigint NOT NULL,
+ `desc` varchar(1024) DEFAULT '' NOT NULL,
+ `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ PRIMARY KEY (`biz_tag`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO segments(`biz_tag`, `max_id`, `step`, `desc`) VALUES('test', 0, 100000, "test业务ID池");
 ```
 
 # 启动程序
