@@ -6,14 +6,12 @@ import (
 )
 
 type Conf struct {
-	PartitionIdx int
-	TotalPartition int
-	SegmentSize int
-	DSN string
+	DSN string	`json:"DSN"`
+	Table string `json:"table"`
 
-	HttpPort int
-	HttpReadTimeout int
-	HttpWriteTimeout int
+	HttpPort int `json:"httpPort"`
+	HttpReadTimeout int `json:"httpReadTimeout"`
+	HttpWriteTimeout int	`json:"httpWriteTimeout"`
 }
 
 var GConf *Conf

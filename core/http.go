@@ -7,16 +7,19 @@ import (
 	"strconv"
 	"encoding/json"
 	"fmt"
+	"errors"
 )
 
 type allocResponse struct {
-	Errno int
-	Msg string
-	Id int64
+	Errno int `json:"errno"`
+	Msg string	`json:"msg"`
+	Id int64	`json:"id"`
 }
 
 type healthResponse struct {
-	Left int64
+	Errno int `json:"errno"`
+	Msg string	`json:"msg"`
+	Left int64 `json:"left"`
 }
 
 func handleAlloc(w http.ResponseWriter, r *http.Request) {
@@ -24,20 +27,35 @@ func handleAlloc(w http.ResponseWriter, r *http.Request) {
 		resp allocResponse = allocResponse{}
 		err error
 		bytes []byte
+		bizTag string
 	)
 
-	for { // skip Id=0
-		if resp.Id, err = GAlloc.NextId(); err != nil {
-			resp.Errno = -1
-			resp.Msg = fmt.Sprintf("%v", err)
-			w.WriteHeader(500)
-			break
+	if err = r.ParseForm(); err != nil {
+		goto RESP
+	}
+
+	if bizTag = r.Form.Get("biz_tag"); bizTag == "" {
+		err = errors.New("need biz_tag param")
+		goto RESP
+	}
+
+	for { // 跳过ID=0, 一般业务不支持ID=0
+		if resp.Id, err = GAlloc.NextId(bizTag); err != nil {
+			goto RESP
 		}
 		if resp.Id != 0 {
 			break
 		}
 	}
 
+RESP:
+	if err != nil {
+		resp.Errno = -1
+		resp.Msg = fmt.Sprintf("%v", err)
+		w.WriteHeader(500)
+	} else {
+		resp.Msg = "success"
+	}
 	if bytes, err = json.Marshal(&resp); err == nil {
 		w.Write(bytes)
 	} else {
@@ -48,13 +66,33 @@ func handleAlloc(w http.ResponseWriter, r *http.Request) {
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	var (
 		resp healthResponse = healthResponse{}
+		err error
+		bizTag string
 	)
 
-	resp.Left = GAlloc.LeftCount()
-	if resp.Left == 0 {
-		w.WriteHeader(500)
+	if err = r.ParseForm(); err != nil {
+		goto RESP
 	}
 
+	if bizTag = r.Form.Get("biz_tag"); bizTag == "" {
+		err = errors.New("need biz_tag param")
+		goto RESP
+	}
+
+	resp.Left = GAlloc.LeftCount(bizTag)
+	if resp.Left == 0 {
+		err = errors.New("no available id ")
+		goto RESP
+	}
+
+RESP:
+	if err != nil {
+		resp.Errno = -1
+		resp.Msg = fmt.Sprintf("%v", err)
+		w.WriteHeader(500)
+	} else {
+		resp.Msg = "success"
+	}
 	if bytes, err := json.Marshal(&resp); err == nil {
 		w.Write(bytes)
 	} else {
