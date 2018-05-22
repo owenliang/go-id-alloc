@@ -77,4 +77,15 @@ http://localhost:8880/health?biz_tag=test
 
 # 原理
 
+## 核心SQL
+
+```
+Begin
+UPDATE table SET max_id=max_id+step WHERE biz_tag=xxx
+SELECT tag, max_id, step FROM table WHERE biz_tag=xxx
+Commit
+```
+
+## 设计参考
+
 [Leaf——美团点评分布式ID生成系统](https://tech.meituan.com/MT_Leaf.html)
