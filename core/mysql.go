@@ -32,7 +32,7 @@ func InitMysql() error {
 	if err != nil {
 		return err
 	}
-	db.SetMaxIdleConns(50)
+	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(0)
 	GMysql = &Mysql{db: db}
 	return nil
